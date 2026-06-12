@@ -16,26 +16,32 @@ gm = train['Drafted'].mean()
 # Feature Engineering
 full['BMI'] = full['Weight'] / (full['Height'] ** 2)
 
+# Target encoding for categorical features
 for grp in ['Position', 'Player_Type']:
     agg = train.groupby(grp)['Drafted'].mean()
     full[f'{grp}_rate'] = full[grp].map(agg).fillna(gm)
 
 full['School_rate'] = full['School'].map(train.groupby('School')['Drafted'].mean()).fillna(gm)
 
+# Impute missing values
 for col in ['Sprint_40yd', 'Vertical_Jump', 'Bench_Press_Reps', 'Broad_Jump', 'Agility_3cone', 'Shuttle']:
     full[col] = full[col].fillna(full[col].median())
 
+# Athleticism composite
 full['Athleticism'] = (
     -full['Sprint_40yd'] + full['Vertical_Jump'] * 0.5 + full['Bench_Press_Reps'] * 0.3
     - full['Broad_Jump'] - full['Agility_3cone'] - full['Shuttle']
 )
 
+# Position-relative percentiles
 for col in ['Sprint_40yd', 'Vertical_Jump']:
     full[f'{col}_pct'] = full.groupby('Position')[col].transform(lambda x: x.rank(pct=True))
 
+# Missing indicators
 for col in ['Age', 'Sprint_40yd', 'Vertical_Jump', 'Bench_Press_Reps', 'Broad_Jump', 'Agility_3cone', 'Shuttle']:
     full[f'{col}_na'] = full[col].isnull().astype(int)
 
+# Encode categoricals
 for col in ['School', 'Player_Type', 'Position_Type', 'Position']:
     full[col] = LabelEncoder().fit_transform(full[col].astype(str))
 
@@ -58,12 +64,12 @@ def train_oof(model, X, y):
     return roc_auc_score(y, oof), oof
 
 print("Training RandomForestClassifier...")
-rf = RandomForestClassifier(n_estimators=200, max_depth=6, min_samples_leaf=20, random_state=42, n_jobs=-1)
+rf = RandomForestClassifier(n_estimators=400, max_depth=6, min_samples_leaf=20, random_state=42, n_jobs=-1)
 s_rf, oof_rf = train_oof(rf, X, y)
 print(f"RF CV: {s_rf:.5f}")
 
 print("Training ExtraTrees...")
-et = ExtraTreesClassifier(n_estimators=200, max_depth=6, min_samples_leaf=20, random_state=42, n_jobs=-1)
+et = ExtraTreesClassifier(n_estimators=400, max_depth=6, min_samples_leaf=20, random_state=42, n_jobs=-1)
 s_et, oof_et = train_oof(et, X, y)
 print(f"ET CV: {s_et:.5f}")
 
